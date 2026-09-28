@@ -1,0 +1,22 @@
+{
+  "name": "onetick-py-coding",
+  "version": "0.7.2",
+  "description": "Write, debug, and review onetick.py (otp) code against the OneTick tick database \u2014 data retrieval, aggregations, joins, orders/executions, symbols/multistage queries, bars, best-execution analytics, and OneTick SQL. Bundles the full onetick-py API reference (every function/class/method as a lookup-able markdown file), curated examples, the coding rules that prevent common mistakes, and a server-side performance-patterns catalogue (compute in OneTick, not offload-to-pandas).",
+  "author": {
+    "name": "OneTick LLM Team",
+    "email": "aleksander.serechenko@onetick.com"
+  },
+  "homepage": "https://github.com/onemarketdata/onetick-coding-skills",
+  "keywords": [
+    "onetick",
+    "onetick.py",
+    "otp",
+    "tick-data",
+    "market-data",
+    "trading",
+    "orders",
+    "sql",
+    "performance",
+    "server-side"
+  ]
+}

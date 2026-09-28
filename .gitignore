@@ -1,0 +1,35 @@
+# maintainer-only upstream clones used by scripts/sync.sh
+**/.upstream/
+
+# python / OS cruft
+**/__pycache__/
+*.pyc
+.DS_Store
+.venv/
+
+# personal Claude Code session-tracing hook (local-only, contains secret keys)
+.claude/settings.local.json
+.claude/hooks/
+
+# eval per-run artifacts: generated candidates + scratch stay LOCAL, only the reports
+# (benchmark_gold.*, REPORT/RESULTS/FINAL_REPORT) are committed. Committed candidates would
+# bloat MR review diffs and put model-generated answers to the frozen eval cases into the repo
+# (contamination/overfitting risk); reports must bake in any evidence they need.
+evals/results/**/cand*/**
+**/claude_log.jsonl
+
+# local renderings of the graded json / mined logs — REPORT.md is the committed human layer
+evals/results/**/log_analysis.md
+evals/results/**/blind_judge.md
+evals/results/**/blind_judge.json
+
+# blind_judge.py requires --out; a run pointed at the repo root instead of evals/results/<change>
+# leaves this here by mistake
+/blind_judge.json
+
+# ignore subfolders in evals/results/<branch_name>/ folder (but not files)
+evals/results/*/*/
+
+# doc-Q&A per-run artifacts (answer.txt/prompt.txt/meta.json + claude_log.jsonl) — bulky,
+# regenerable; copy docqa_results.json/.md into evals/results/<change>/ if you want to commit them
+evals/docqa/out/

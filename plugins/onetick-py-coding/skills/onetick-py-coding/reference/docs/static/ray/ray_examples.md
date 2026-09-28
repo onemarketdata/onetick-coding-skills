@@ -1,0 +1,156 @@
+
+
+# Ray usage examples
+
+
+
+## Example remote function
+
+```python
+import ray
+import onetick.py as otp
+
+# Special decorator to run code remotely
+@ray.remote(max_retries=1)
+def example_otp_code():
+
+    # here goes OTP code you want to run
+    data = otp.DataSource(db='US_COMP_SAMPLE',
+                          tick_type='TRD',
+                          start=otp.dt(2024, 2, 1),
+                          end=otp.dt(2024, 2, 2))
+
+    data['VOLUME'] = data['PRICE'] * data['SIZE']
+    return otp.run(data)
+
+# Initialize Ray connection
+ray.init()
+
+# Run your code on Ray and get results back
+df = ray.get(example_otp_code.remote())
+
+# Shutdown Ray connection
+ray.shutdown()
+
+# Continue using df just as local pandas.DataFrame object
+print(df.head())
+```
+
+```
+                           Time EXCHANGE  COND STOP_STOCK SOURCE TRF TTE TICKER   PRICE  ... TICK_STATUS  SIZE  CORR  SEQ_NUM  TRADE_ID              PARTICIPANT_TIME            TRF_TIME OMDSEQ   VOLUME
+0 2024-02-01 00:00:00.048190824        Q  @ TI                 N       0   AAPL  185.12  ...           0     1     0  7036146    132606 2024-02-01 00:00:00.048173690 1970-01-01 01:00:00      0   185.12
+1 2024-02-01 00:00:00.048193652        Q  @ TI                 N       0   AAPL  185.15  ...           0     2     0  7036147    132607 2024-02-01 00:00:00.048173690 1970-01-01 01:00:00      1   370.30
+2 2024-02-01 00:00:00.048196114        Q  @ TI                 N       0   AAPL  185.15  ...           0     4     0  7036148    132608 2024-02-01 00:00:00.048173690 1970-01-01 01:00:00      2   740.60
+3 2024-02-01 00:00:00.048225536        K  @ TI                 N       1   AAPL  185.15  ...           0    20     0  7036149     42210 2024-02-01 00:00:00.048014000 1970-01-01 01:00:00      3  3703.00
+4 2024-02-01 00:00:00.048550857        P  @ TI                 N       0   AAPL  185.15  ...           0     2     0  7036150     48700 2024-02-01 00:00:00.048207295 1970-01-01 01:00:00      4   370.30
+```
+
+## Example function with arguments
+
+You may define arguments for remote functions and call it similarly with specific arguments.
+The only difference is that you must put arguments inside `function.remote()` method.
+
+```python
+import ray
+import onetick.py as otp
+
+# Remote function with arguments
+@ray.remote(max_retries=1)
+def get_BBO_offset(start, num_orders, offset):
+    # basic setup of onetick.py inside remote function
+    import onetick.py as otp
+    otp.config.default_symbol = 'NQ\H22'
+
+    # Create order flow.
+    # In practice, it can be take from a CSV file for from a DataFrame.
+    order = otp.Ticks(timezone_for_time='EST5EDT',
+                      start=start,
+                      end=start + otp.Hour(1),
+                      offset = [otp.Milli(x * 500) for x in range(0, num_orders)],
+                      ID = [x for x in range (0, num_orders)])
+    order['ARRIVAL'] = order['Time']
+    order['SYMBOL'] = 'NQ\H22'
+    q = order.join_with_query(
+        otp.DataSource('CME', tick_type='QTE', back_to_first_tick=600),
+        symbol=(order['SYMBOL']),
+        start_time=order['ARRIVAL'] + otp.Milli(int(offset * 1000)),
+        end_time=order['ARRIVAL'] + otp.Milli(int(offset * 1000)),
+    )
+    return otp.run(q)
+
+# Initialize Ray connection
+ray.init()
+
+# Call remote function with specific arguments
+df = ray.get(get_BBO_offset.remote(start=otp.dt(2022, 3, 2, 10), num_orders=5, offset=.5))
+print(df.head())
+
+# Call it again with other arguments
+df_other_arguments = ray.get(get_BBO_offset.remote(start=otp.dt(2022, 3, 2, 10), num_orders=10, offset=-2))
+print(df_other_arguments.head())
+
+# Shutdown Ray connection
+ray.shutdown()
+```
+
+```
+                    Time  ID                 ARRIVAL  SYMBOL  BID_PRICE  BID_SIZE  BID_NUM_ORDERS  BID_SIZE_IMPLIED  ASK_PRICE  ASK_SIZE  ASK_NUM_ORDERS  ASK_SIZE_IMPLIED  OMDSEQ
+0 2022-03-02 10:00:00.000   0 2022-03-02 10:00:00.000  NQ\H22   14076.75         3               3                 0   14077.75         1               1                 0       1
+1 2022-03-02 10:00:00.500   1 2022-03-02 10:00:00.500  NQ\H22   14084.00         1               1                 0   14084.75         1               1                 0       4
+2 2022-03-02 10:00:01.000   2 2022-03-02 10:00:01.000  NQ\H22   14083.75         2               2                 0   14084.75         1               1                 0       4
+3 2022-03-02 10:00:01.500   3 2022-03-02 10:00:01.500  NQ\H22   14080.25         4               3                 0   14081.25         3               2                 0       1
+4 2022-03-02 10:00:02.000   4 2022-03-02 10:00:02.000  NQ\H22   14078.25         1               1                 0   14079.00         3               3                 0       1
+                    Time  ID                 ARRIVAL  SYMBOL  BID_PRICE  BID_SIZE  BID_NUM_ORDERS  BID_SIZE_IMPLIED  ASK_PRICE  ASK_SIZE  ASK_NUM_ORDERS  ASK_SIZE_IMPLIED  OMDSEQ
+0 2022-03-02 10:00:00.000   0 2022-03-02 10:00:00.000  NQ\H22   14079.25         1               1                 0   14080.00         2               2                 0      10
+1 2022-03-02 10:00:00.500   1 2022-03-02 10:00:00.500  NQ\H22   14079.50         1               1                 0   14080.25         1               1                 0       7
+2 2022-03-02 10:00:01.000   2 2022-03-02 10:00:01.000  NQ\H22   14080.00         1               1                 0   14080.75         2               2                 0       1
+3 2022-03-02 10:00:01.500   3 2022-03-02 10:00:01.500  NQ\H22   14073.25         1               1                 0   14074.00         1               1                 0       1
+4 2022-03-02 10:00:02.000   4 2022-03-02 10:00:02.000  NQ\H22   14075.25         1               1                 0   14076.00         1               1                 0       4
+```
+
+## Limitations
+
+Remote run approach leads to some usage limitations:
+
+- You cannot use custom/imported modules inside remote functions - compute all arguments before calling remote function.
+- Ray instance is isolated from global Internet.
+- Run only `onetick.py` specific code to reduce Ray instance resource (memory, CPU) consumption.
+- You cannot use file pointers as arguments - call remote functions with file content as argument.
+
+
+
+### Using apply() method in remote context
+
+Technical implementation of `otp.Source.apply` method requires user to use `otp.remote` decorator
+with functions and lambda expressions that will be used as arguments to `otp.Source.apply` method.
+
+```python
+import ray
+import onetick.py as otp
+
+@otp.remote
+def match_condition(row):
+   if row['COND'].str.contains('O'):
+       return 1
+   if row['COND'].str.contains('6') == True:
+       return 1
+   if row['COND'].str.contains('9') == True:
+       return 1
+   else:
+       return 0
+
+@ray.remote(max_retries=1)
+def quicktest(start, end, symbol):
+    ds_trd = otp.DataSource(db='US_COMP_SAMPLE', tick_type='TRD', start=start, end=end)
+    ds_trd.schema['COND'] = str
+    ds_trd['OC_TRD'] = ds_trd.apply(match_condition)
+    return otp.run(ds_trd, symbol=[symbol])
+
+start = otp.dt(2024, 2, 1, 9, 29)
+end = otp.dt(2024, 2, 1, 16, 30)
+symbol = 'AAPL'
+ray.init()
+result = ray.get(quicktest.remote(start, end, symbol))
+print(result)
+ray.shutdown()
+```

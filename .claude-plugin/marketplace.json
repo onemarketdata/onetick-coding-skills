@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "onetick-coding-skills",
+  "description": "OneTick coding skills for Claude Code — onetick.py (otp) API reference, curated examples, and the coding rules that prevent common mistakes.",
+  "owner": {
+    "name": "OneTick LLM Team",
+    "email": "aleksander.serechenko@onetick.com"
+  },
+  "plugins": [
+    {
+      "name": "onetick-py-coding",
+      "source": "./plugins/onetick-py-coding",
+      "category": "development",
+      "description": "Write, debug, and review onetick.py (otp) code against the OneTick tick database. Bundles the full onetick-py API reference (every function/class/method), curated examples, distilled coding rules, and a server-side performance-patterns catalogue (compute in OneTick, not offload-to-pandas)."
+    }
+  ]
+}
