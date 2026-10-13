@@ -220,10 +220,10 @@ run-and-check over shipping unverified code.
   instead use IANA timezone names like `America/New_York`.
 - `otp.Ticks` can specify generated tick timestamps only via the special `offset` field, never via
   the `Time` field.
-- **EXCEPTION — SQL queries (`otp.SqlQuery`):** the interval goes **inside the SQL** as
-  `start_time` / `end_time` conditions in the `WHERE` clause, **not** into `otp.run(start=, end=)` —
-  a `SqlQuery` run without in-SQL time conditions fails with *"start time condition not specified"*.
-  See the "SQL query rules" section.
+- **EXCEPTION — SQL queries (`otp.SqlQuery`):** the interval goes **inside the SQL** as `TIMESTAMP`
+  conditions in the `WHERE` clause, **not** into `otp.run(start=, end=)` — a `SqlQuery` run without
+  in-SQL time conditions fails with *"start time condition not specified"*. See the "SQL query rules"
+  section.
 
 ## Common function hints
 
@@ -491,7 +491,14 @@ bars/VWAP/OHLC, TRD×QTE alignment, option greeks / vol-surface, multi-symbol sc
 OneTick also supports SQL via `otp.run(otp.SqlQuery(sql))`. Apply these **only** when generating SQL.
 
 - Store the SQL in a variable named `sql`; execute with `otp.run(otp.SqlQuery(sql))`.
-- Time ranges map to `start_time` / `end_time`; a mentioned symbol maps to `symbol_name`.
+- Set the time range on the `TIMESTAMP` field, as the OneTick SQL docs do:
+  `TIMESTAMP >= '<start>' AND TIMESTAMP < '<end>'` (`<end>` is exclusive). For a snapshot at a single
+  point in time, use `TIMESTAMP = '<time>'` with `init_lookback = <seconds>` to pick up the prevailing
+  tick before it.
+  - Do **not** use `BETWEEN` on `TIMESTAMP` — OneTick rejects it.
+  - Do **not** set the range with the OneTick-specific `start_time` / `end_time` fields: they accept
+    only `=`, and `start_time >= ...` fails with *"only equality allowed for start_time/end_time"*.
+- A mentioned symbol maps to `symbol_name`.
 - Table names use `DATABASE_NAME.TICK_TYPE` format, e.g. `FROM US_COMP.TRD`. Do **not** use
   `FROM US_COMP` with a `WHERE tick_type = ...` clause.
 - Symbol filtering is in `WHERE` via `symbol_name`: `= 'SYM'`, or `IN ('S1','S2')`. In a JOIN, give
@@ -499,8 +506,9 @@ OneTick also supports SQL via `otp.run(otp.SqlQuery(sql))`. Apply these **only**
 - Timestamps:
   - If the `WHERE` filters on `TIMESTAMP`, do **not** alias any `SELECT` column as `TIMESTAMP` — use
     another name.
-  - `WHERE` timestamp conditions use simple string literals `'YYYY-MM-DD HH:MM:SS <timezone>'`. Do
-    **not** use `TIMESTAMP(...)` or other date functions.
+  - `WHERE` timestamp conditions use simple string literals `'YYYY-MM-DD HH:MM:SS <timezone>'`, always
+    with an explicit timezone (e.g. `UTC`, `America/New_York`) — a value without one is not read as
+    UTC. Do **not** use `TIMESTAMP(...)` or other date functions.
   - Every data table has a `TIMESTAMP` field by default.
 - Counting: use `SUM(CASE WHEN cond THEN 1 ELSE 0 END)` for conditional counts —
   `COUNT(*) FILTER (WHERE ...)` is **not** supported. Use `COUNT(*)` for row counts (NULLs aren't
