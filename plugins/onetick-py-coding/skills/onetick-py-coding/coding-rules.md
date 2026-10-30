@@ -206,6 +206,18 @@ run-and-check over shipping unverified code.
      `_PARAM_END_TIME` / `_PARAM_END_TIME_NANOS` (ms/ns) in the FSQ — different intervals per symbol.
 - If an `otp.DataSource` doesn't specify an interval, the `otp.run` interval is used.
 - If an `otp.DataSource` specifies an interval, the `otp.run` interval is **ignored for that source**.
+- **ALWAYS set the interval — never run on the default one.** With no `start` / `end`, a query uses
+  `otp.config.default_start_time` / `default_end_time` (env `OTP_DEFAULT_START_TIME` /
+  `OTP_DEFAULT_END_TIME`): a fixed window set per installation, which usually holds none of the data
+  you want. The query does not fail — it returns an empty result. Sources that list what exists
+  (`otp.Symbols` and similar) are no exception: they return only what has data inside the interval.
+- **The request names no date?** Do not let the default interval pick one. If the answer depends on
+  the dates (ticks, orders, prices, counts), ask which dates. If the question is about what exists
+  (which symbols, which entities are present), take the interval from the data —
+  `otp.databases()[db].dates()` / `.last_date` (`reference/examples/data_inspection_databases_dates.md`),
+  or a wide window such as `start=otp.dt(2000, 1, 1)`, `end` = tomorrow when the source spans
+  databases — and say in the answer which interval you used.
+- **An empty result is not "no data"** until you have checked that the interval covers dates with data.
 - **NEVER** specify the same interval explicitly on every `otp.DataSource`; set it once in `otp.run`.
 - **NEVER** use the `date` parameter in `otp.run` / `otp.DataSource` for the interval; use explicit
   `start` and `end`.
